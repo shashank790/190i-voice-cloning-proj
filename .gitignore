@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.env/
+
+# macOS
+.DS_Store
+
+# Model files (big!)
+saved_models/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# PyTorch checkpoints
+*.pt
+
+# Logs
+*.log
+
+# Others
+*.sqlite3
+*.db
