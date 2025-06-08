@@ -1,0 +1,5 @@
+Download Models by following the instructions (important for running our program):
+1. pip install gdown
+2. gdown --id 1PXyAPvWKQ8rY4BEfWr45-ea_iWH6jqrc
+3. unzip saved_models.zip
+4. rm saved_models.zip

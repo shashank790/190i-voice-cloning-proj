@@ -25,6 +25,12 @@ Like everything else in Deep Learning, this repo has quickly gotten old. Many Sa
 
 ## Setup
 
+### Download Models
+1. pip install gdown
+2. gdown --id 1PXyAPvWKQ8rY4BEfWr45-ea_iWH6jqrc
+3. unzip saved_models.zip
+4. rm saved_models.zip
+
 ### 1. Install Requirements
 1. Both Windows and Linux are supported. A GPU is recommended for training and for inference speed, but is not mandatory.
 2. Python 3.7 is recommended. Python 3.5 or greater should work, but you'll probably have to tweak the dependencies' versions. I recommend setting up a virtual environment using `venv`, but this is optional.
