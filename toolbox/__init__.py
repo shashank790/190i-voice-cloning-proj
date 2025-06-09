@@ -11,6 +11,8 @@ from synthesizer.inference import Synthesizer
 from toolbox.ui import UI
 from toolbox.utterance import Utterance
 from vocoder import inference as vocoder
+from utils.text_preprocessing import preprocess_text  # Import the preprocessing function
+
 
 
 # Use this directory structure for your datasets, or modify it to fit your needs
@@ -211,7 +213,11 @@ class Toolbox:
         if self.synthesizer is None or seed is not None:
             self.init_synthesizer()
 
-        texts = self.ui.text_prompt.toPlainText().split("\n")
+        # Updated for text preprocessing
+        # Retrieve text input from GUI
+        raw_texts = self.ui.text_prompt.toPlainText().split("\n")
+        # Preprocess each line of text input
+        texts = [preprocess_text(text) for text in raw_texts]
         embed = self.ui.selected_utterance.embed
         embeds = [embed] * len(texts)
         specs = self.synthesizer.synthesize_spectrograms(texts, embeds)

@@ -12,6 +12,7 @@ hyperparameter. Some cleaners are English-specific. You"ll typically want to use
 import re
 from unidecode import unidecode
 from synthesizer.utils.numbers import normalize_numbers
+from utils.text_preprocessing import preprocess_text  # Import the preprocessing function
 
 
 # Regular expression matching whitespace:
@@ -85,4 +86,4 @@ def english_cleaners(text):
     text = expand_numbers(text)
     text = expand_abbreviations(text)
     text = collapse_whitespace(text)
-    return text
+    return preprocess_text(text)  # Added for text preprocessing
