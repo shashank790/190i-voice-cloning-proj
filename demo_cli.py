@@ -14,11 +14,25 @@ from utils.argutils import print_args
 from utils.default_models import ensure_default_models
 from vocoder import inference as vocoder
 
+# new TTS engines
+from tts_engines.elevenlabs import ElevenLabs
+from tts_engines.azure_tts import AzureTTS
+
+# import augmentation from utils
+from utils.augment import augment_wave
+
+# import text_preprocessing from utils
+from utils.text_preprocessing import preprocess_text
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
+    parser.add_argument("--tts_engine", type=str, default="sv2tts",
+                        choices=["sv2tts", "elevenlabs", "azure"],
+                        help="Choose TTS engine: sv2tts (default), elevenlabs, or azure.")
+    parser.add_argument("--elevenlabs_api_key", type=str, default="sk_d366d7c4f38ec3c3d997859abde468c7f146a3635c8df20c",
+                        help="API key for ElevenLabs TTS.")
     parser.add_argument("-e", "--enc_model_fpath", type=Path,
                         default="saved_models/default/encoder.pt",
                         help="Path to a saved encoder")
@@ -41,6 +55,82 @@ if __name__ == '__main__':
     # Hide GPUs from Pytorch to force CPU processing
     if arg_dict.pop("cpu"):
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+    if args.tts_engine == "sv2tts":
+        print("Running SV2TTS pipeline...")
+        if torch.cuda.is_available():
+            device_id = torch.cuda.current_device()
+            gpu_properties = torch.cuda.get_device_properties(device_id)
+            print("Using GPU %d (%s) with %.1fGb memory.\n" %
+                  (device_id, gpu_properties.name, gpu_properties.total_memory / 1e9))
+        else:
+            print("Using CPU.\n")
+
+        print("Preparing models...")
+        ensure_default_models(Path("saved_models"))
+        encoder.load_model(args.enc_model_fpath)
+        synthesizer = Synthesizer(args.syn_model_fpath)
+        vocoder.load_model(args.voc_model_fpath)
+
+        print("Ready for interactive voice cloning!")
+        num_generated = 0
+        while True:
+            try:
+                in_fpath = Path(input("Reference audio filepath:\n").replace("\"", "").replace("\'", ""))
+                preprocessed_wav = encoder.preprocess_wav(in_fpath)
+                embed = encoder.embed_utterance(preprocessed_wav)
+                text = input("Text to synthesize:\n")
+
+                # apply text preprocessing
+                text = preprocess_text(text)
+
+                if args.seed is not None:
+                    torch.manual_seed(args.seed)
+                    synthesizer = Synthesizer(args.syn_model_fpath)
+
+                specs = synthesizer.synthesize_spectrograms([text], [embed])
+                spec = specs[0]
+                generated_wav = vocoder.infer_waveform(spec)
+                generated_wav = np.pad(generated_wav, (0, synthesizer.sample_rate), mode="constant")
+                generated_wav = encoder.preprocess_wav(generated_wav)
+                
+                # Apply data augmentation to final audio
+                generated_wav = augment_wave(generated_wav, synthesizer.sample_rate)
+
+                if not args.no_sound:
+                    import sounddevice as sd
+                    try:
+                        sd.stop()
+                        sd.play(generated_wav, synthesizer.sample_rate)
+                    except Exception as e:
+                        print("Audio playback error:", e)
+
+                filename = "demo_output_%02d.wav" % num_generated
+                sf.write(filename, generated_wav.astype(np.float32), synthesizer.sample_rate)
+                num_generated += 1
+                print(f"Saved as {filename}\n\n")
+            except Exception as e:
+                print("Caught exception:", e)
+                print("Restarting...\n")
+
+    elif args.tts_engine == "elevenlabs":
+        print("Using ElevenLabs TTS engine.")
+        eleven = ElevenLabs(api_key=args.elevenlabs_api_key)
+        text = input("Text to synthesize:\n")
+        output_path = eleven.synthesize(text, output_path="demo_elevenlabs.wav")
+        print(f"Generated ElevenLabs audio saved to {output_path}.")
+
+    elif args.tts_engine == "azure":
+        print("Using Azure TTS engine.")
+        azure_key = "BZ2EWlbMPKOEQrs6em2tPkVcvxDxWGWx1uG2QFV09YUXHs6CLY7QJQQJ99BFACYeBjFXJ3w3AAAYACOGXymw"
+        azure_region = "eastus"
+        azure = AzureTTS(azure_key, azure_region)
+        text = input("Text to synthesize:\n")
+        output_path = azure.synthesize(text)
+        print(f"Generated AzureTTS audio saved to {output_path}.")
+
+    else:
+        print("Invalid TTS engine selected.")
 
     print("Running a test of your configuration...\n")
 
